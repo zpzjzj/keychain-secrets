@@ -1,0 +1,6 @@
+interface:
+  display_name: "Keychain Secrets"
+  short_description: "Store agent secrets in macOS Keychain"
+  default_prompt: "Use $keychain-secrets to store and inject an API key for an agent without exposing the value."
+policy:
+  allow_implicit_invocation: true
