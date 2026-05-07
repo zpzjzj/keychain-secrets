@@ -49,7 +49,25 @@ List managed secrets and notes:
 python scripts/keychain_secrets.py list
 ```
 
-Start a local web UI for configuring names, env vars, notes, and Keychain values:
+Install and open the native macOS app for configuring names, env vars, notes, and Keychain values without running a localhost service:
+
+```bash
+python scripts/keychain_secrets.py app
+```
+
+The app is installed at:
+
+```text
+~/Applications/KeychainSecrets.app
+```
+
+You can open it later from Finder, Spotlight, or:
+
+```bash
+open "$HOME/Applications/KeychainSecrets.app"
+```
+
+Start the legacy local web UI when a browser-based fallback is useful:
 
 ```bash
 python scripts/keychain_secrets.py open
@@ -98,5 +116,6 @@ python scripts/keychain_secrets.py delete OPENAI_API_KEY
 - `security add-generic-password` without `-U` does not update an existing item. The script uses `-U`.
 - Keychain values do not automatically become environment variables. Use `run` or evaluate the local `export` output in a shell.
 - The default Keychain `service` and injected env var name are both the provided name, for example `OPENAI_API_KEY`.
+- `app` installs and opens a native macOS app; no localhost service is involved.
 - `open` starts the web UI only when needed and opens it. `launch` starts the web UI through a user-level `launchctl` job; `serve` runs it in the foreground for debugging.
 - The web UI binds to `127.0.0.1` by default and never renders secret values back into the page.

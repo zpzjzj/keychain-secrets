@@ -20,6 +20,7 @@ from urllib.request import urlopen
 INDEX_PATH = Path.home() / ".codex" / "keychain-secrets" / "index.json"
 LAUNCH_LABEL = "com.codex.keychain-secrets"
 DEFAULT_KEYCHAIN = Path.home() / "Library" / "Keychains" / "login.keychain-db"
+MACOS_APP_PATH = Path.home() / "Applications" / "KeychainSecrets.app"
 
 
 def now() -> str:
@@ -242,6 +243,38 @@ def cmd_info(args: argparse.Namespace) -> None:
     if not entry:
         raise SystemExit(f"{args.name} is not in the managed metadata index.")
     print(json.dumps({args.name: entry}, indent=2, sort_keys=True))
+
+
+def cmd_names(_: argparse.Namespace) -> None:
+    for name in sorted(load_index()):
+        print(name)
+
+
+def cmd_field(args: argparse.Namespace) -> None:
+    index = load_index()
+    entry = index.get(args.name)
+    if entry is None:
+        raise SystemExit(f"{args.name} is not in the managed metadata index.")
+    if args.field == "name":
+        print(args.name)
+        return
+    print(entry.get(args.field, ""))
+
+
+def cmd_update(args: argparse.Namespace) -> None:
+    index = load_index()
+    previous = index.get(args.name)
+    if previous is None:
+        raise SystemExit(f"{args.name} is not in the managed metadata index.")
+    update_secret_metadata(
+        name=args.name,
+        service=args.service if args.service is not None else previous.get("service", args.name),
+        acct=args.account if args.account is not None else previous.get("account", account(args)),
+        env_name=args.env if args.env is not None else previous.get("env", args.name),
+        note=args.note if args.note is not None else previous.get("note", ""),
+        keychain=args.keychain if args.keychain is not None else previous.get("keychain", keychain_path(args)),
+    )
+    print(f"Updated {args.name}.")
 
 
 def cmd_delete(args: argparse.Namespace) -> None:
@@ -545,6 +578,23 @@ def cmd_open(args: argparse.Namespace) -> None:
     print(url)
 
 
+def skill_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def cmd_install_app(_: argparse.Namespace) -> None:
+    installer = skill_root() / "scripts" / "install_macos_app.sh"
+    completed = subprocess.run([str(installer)], check=True, text=True, stdout=subprocess.PIPE)
+    print(completed.stdout.strip())
+
+
+def cmd_app(_: argparse.Namespace) -> None:
+    if not MACOS_APP_PATH.exists():
+        cmd_install_app(argparse.Namespace())
+    subprocess.run(["/usr/bin/open", str(MACOS_APP_PATH)], check=False)
+    print(str(MACOS_APP_PATH))
+
+
 def cmd_stop(_: argparse.Namespace) -> None:
     subprocess.run(["/bin/launchctl", "remove", LAUNCH_LABEL], check=False)
     print("Stopped Keychain Secrets UI.")
@@ -597,6 +647,23 @@ def build_parser() -> argparse.ArgumentParser:
     info.add_argument("name")
     info.set_defaults(func=cmd_info)
 
+    names = subparsers.add_parser("names", help="List managed secret names.")
+    names.set_defaults(func=cmd_names)
+
+    field = subparsers.add_parser("field", help="Print one metadata field for a secret.")
+    field.add_argument("name")
+    field.add_argument("field", choices=["name", "env", "service", "account", "keychain", "note", "updated_at"])
+    field.set_defaults(func=cmd_field)
+
+    update = subparsers.add_parser("update", help="Update metadata without changing the secret value.")
+    update.add_argument("name")
+    update.add_argument("--account")
+    update.add_argument("--service")
+    update.add_argument("--keychain")
+    update.add_argument("--env")
+    update.add_argument("--note")
+    update.set_defaults(func=cmd_update)
+
     delete = subparsers.add_parser("delete", help="Delete a secret and its metadata.")
     delete.add_argument("name")
     delete.add_argument("--account")
@@ -618,6 +685,12 @@ def build_parser() -> argparse.ArgumentParser:
     open_cmd.add_argument("--host", default="127.0.0.1")
     open_cmd.add_argument("--port", type=int, default=8765)
     open_cmd.set_defaults(func=cmd_open)
+
+    install_app = subparsers.add_parser("install-app", help="Build and install the native macOS app.")
+    install_app.set_defaults(func=cmd_install_app)
+
+    app_cmd = subparsers.add_parser("app", help="Install if needed and open the native macOS app.")
+    app_cmd.set_defaults(func=cmd_app)
 
     stop = subparsers.add_parser("stop", help="Stop the launchctl web UI job.")
     stop.set_defaults(func=cmd_stop)
