@@ -69,7 +69,16 @@ static NSString *DefaultKeychainPath(void) {
 }
 
 static NSString *IndexPath(void) {
+    const char *overridePath = getenv("KEYCHAIN_SECRETS_INDEX_PATH");
+    if (overridePath != NULL && strlen(overridePath) > 0) {
+        return [NSString stringWithUTF8String:overridePath];
+    }
     return [NSHomeDirectory() stringByAppendingPathComponent:@".codex/keychain-secrets/index.json"];
+}
+
+static BOOL UsesIndexOverride(void) {
+    const char *overridePath = getenv("KEYCHAIN_SECRETS_INDEX_PATH");
+    return overridePath != NULL && strlen(overridePath) > 0;
 }
 
 static NSScreen *PreferredScreen(void) {
@@ -515,6 +524,8 @@ static void InstallMainMenu(void) {
         if (index != NSNotFound) {
             [self.table selectRowIndexes:[NSIndexSet indexSetWithIndex:index] byExtendingSelection:NO];
         }
+    } else if (UsesIndexOverride() && self.names.count > 0) {
+        [self.table selectRowIndexes:[NSIndexSet indexSetWithIndex:0] byExtendingSelection:NO];
     }
     self.statusLabel.stringValue = @"Refreshed";
 }
