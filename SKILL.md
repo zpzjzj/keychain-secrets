@@ -30,7 +30,7 @@ python scripts/keychain_secrets.py --help
 The script stores values in macOS Keychain and keeps a plaintext metadata index at:
 
 ```text
-~/.codex/keychain-secrets/index.json
+~/Library/Application Support/KeychainSecrets/index.json
 ```
 
 The index does not contain secret values.

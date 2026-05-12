@@ -147,7 +147,7 @@ cat > "${CONTENTS_DIR}/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key>
   <string>KeychainSecrets</string>
   <key>CFBundleIdentifier</key>
-  <string>com.codex.keychain-secrets</string>
+  <string>io.github.zpzjzj.keychain-secrets</string>
   <key>CFBundleName</key>
   <string>KeychainSecrets</string>
   <key>CFBundleDisplayName</key>

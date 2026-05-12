@@ -17,10 +17,38 @@ from urllib.parse import parse_qs, quote, urlparse
 from urllib.request import urlopen
 
 
-INDEX_PATH = Path.home() / ".codex" / "keychain-secrets" / "index.json"
-LAUNCH_LABEL = "com.codex.keychain-secrets"
+def _resolve_index_path() -> Path:
+    override = os.environ.get("KEYCHAIN_SECRETS_INDEX_PATH")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / "Library" / "Application Support" / "KeychainSecrets" / "index.json"
+
+
+LEGACY_INDEX_PATHS = [
+    Path.home() / ".codex" / "keychain-secrets" / "index.json",
+]
+INDEX_PATH = _resolve_index_path()
+LAUNCH_LABEL = "io.github.zpzjzj.keychain-secrets"
 DEFAULT_KEYCHAIN = Path.home() / "Library" / "Keychains" / "login.keychain-db"
 MACOS_APP_PATH = Path.home() / "Applications" / "KeychainSecrets.app"
+
+
+def _migrate_legacy_index() -> None:
+    if INDEX_PATH.exists():
+        return
+    for legacy in LEGACY_INDEX_PATHS:
+        if legacy.exists():
+            INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+            INDEX_PATH.write_bytes(legacy.read_bytes())
+            try:
+                INDEX_PATH.chmod(0o600)
+            except OSError:
+                pass
+            print(
+                f"[keychain-secrets] migrated metadata index: {legacy} -> {INDEX_PATH}",
+                file=sys.stderr,
+            )
+            return
 
 
 def now() -> str:
@@ -28,6 +56,7 @@ def now() -> str:
 
 
 def load_index() -> dict[str, dict[str, str]]:
+    _migrate_legacy_index()
     if not INDEX_PATH.exists():
         return {}
     return json.loads(INDEX_PATH.read_text())
