@@ -73,7 +73,23 @@ static NSString *IndexPath(void) {
     if (overridePath != NULL && strlen(overridePath) > 0) {
         return [NSString stringWithUTF8String:overridePath];
     }
-    return [NSHomeDirectory() stringByAppendingPathComponent:@".codex/keychain-secrets/index.json"];
+    NSString *modern = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/KeychainSecrets/index.json"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:modern]) {
+        return modern;
+    }
+    NSString *legacy = [NSHomeDirectory() stringByAppendingPathComponent:@".codex/keychain-secrets/index.json"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:legacy]) {
+        NSError *err = nil;
+        [[NSFileManager defaultManager] createDirectoryAtPath:[modern stringByDeletingLastPathComponent]
+                                  withIntermediateDirectories:YES
+                                                   attributes:nil
+                                                        error:&err];
+        if (err == nil && [[NSFileManager defaultManager] copyItemAtPath:legacy toPath:modern error:&err]) {
+            return modern;
+        }
+        return legacy;
+    }
+    return modern;
 }
 
 static BOOL UsesIndexOverride(void) {
@@ -277,7 +293,7 @@ static void InstallMainMenu(void) {
     [form addSubview:noteLabel];
     [form addSubview:noteScroll];
 
-    self.hintLabel = [NSTextField wrappingLabelWithString:@"Secret values are stored in macOS Keychain. This app stores only metadata in ~/.codex/keychain-secrets/index.json."];
+    self.hintLabel = [NSTextField wrappingLabelWithString:@"Secret values are stored in macOS Keychain. This app stores only metadata in ~/Library/Application Support/KeychainSecrets/index.json."];
     self.hintLabel.textColor = NSColor.secondaryLabelColor;
     self.hintLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [form addSubview:self.hintLabel];
